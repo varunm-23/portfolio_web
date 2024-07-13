@@ -1,0 +1,348 @@
+import os
+import zipfile
+
+# Define the directory structure and files for the project
+project_structure = {
+    'portfolio-website': {
+        'backend': {
+            'models': {
+                'Project.js': """const mongoose = require('mongoose');
+
+const projectSchema = new mongoose.Schema({
+  title: String,
+  description: String,
+  imageUrl: String,
+  technologies: [String],
+  link: String
+});
+
+module.exports = mongoose.model('Project', projectSchema);
+"""
+            },
+            'routes': {
+                'projects.js': """const express = require('express');
+const Project = require('../models/Project');
+
+const router = express.Router();
+
+router.get('/', async (req, res) => {
+  const projects = await Project.find();
+  res.json(projects);
+});
+
+module.exports = router;
+"""
+            },
+            'app.js': """const express = require('express');
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+const cors = require('cors');
+
+dotenv.config();
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+
+app.use('/api/projects', require('./routes/projects'));
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+"""
+            },
+            'package.json': """{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "Backend for portfolio website",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "mongoose": "^5.10.9"
+  }
+}
+""",
+            '.env': """MONGODB_URI=your_mongodb_connection_string
+"""
+        },
+        'frontend': {
+            'public': {},
+            'src': {
+                'components': {
+                    'Header.js': """import React from 'react';
+import styled from 'styled-components';
+
+const Header = () => {
+  return (
+    <HeaderContainer>
+      <h1>My Portfolio</h1>
+    </HeaderContainer>
+  );
+};
+
+const HeaderContainer = styled.header\`
+  background: ${({ theme }) => theme.colors.primary};
+  padding: 20px;
+  text-align: center;
+  color: white;
+\`;
+
+export default Header;
+""",
+                    'Footer.js': """import React from 'react';
+import styled from 'styled-components';
+
+const Footer = () => {
+  return (
+    <FooterContainer>
+      <p>&copy; 2024 My Portfolio. All rights reserved.</p>
+    </FooterContainer>
+  );
+};
+
+const FooterContainer = styled.footer\`
+  background: ${({ theme }) => theme.colors.primary};
+  padding: 10px;
+  text-align: center;
+  color: white;
+\`;
+
+export default Footer;
+""",
+                    'ProjectCard.js': """import React from 'react';
+import styled from 'styled-components';
+
+const ProjectCard = ({ project }) => {
+  return (
+    <Card>
+      <Image src={project.imageUrl} alt={project.title} />
+      <Content>
+        <h3>{project.title}</h3>
+        <p>{project.description}</p>
+        <Technologies>
+          {project.technologies.map((tech, index) => (
+            <Tech key={index}>{tech}</Tech>
+          ))}
+        </Technologies>
+        <Link href={project.link} target="_blank" rel="noopener noreferrer">View Project</Link>
+      </Content>
+    </Card>
+  );
+};
+
+const Card = styled.div\`
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+\`;
+
+const Image = styled.img\`
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+\`;
+
+const Content = styled.div\`
+  padding: 20px;
+\`;
+
+const Technologies = styled.div\`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+\`;
+
+const Tech = styled.span\`
+  background: ${({ theme }) => theme.colors.secondary};
+  color: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 0.8rem;
+\`;
+
+const Link = styled.a\`
+  display: inline-block;
+  margin-top: 10px;
+  background: ${({ theme }) => theme.colors.primary};
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  text-decoration: none;
+\`;
+
+export default ProjectCard;
+""",
+                    'Home.js': """import React from 'react';
+import styled from 'styled-components';
+import ProjectCard from './ProjectCard';
+import { motion } from 'framer-motion';
+
+const Home = ({ projects }) => {
+  return (
+    <HomeContainer>
+      <h2>My Projects</h2>
+      <ProjectsGrid>
+        {projects.map((project, index) => (
+          <motion.div 
+            key={index}
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <ProjectCard project={project} />
+          </motion.div>
+        ))}
+      </ProjectsGrid>
+    </HomeContainer>
+  );
+};
+
+const HomeContainer = styled.div\`
+  padding: 20px;
+\`;
+
+const ProjectsGrid = styled.div\`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+\`;
+
+export default Home;
+""",
+                    'About.js': """import React from 'react';
+import styled from 'styled-components';
+
+const About = () => {
+  return (
+    <AboutContainer>
+      <h2>About Me</h2>
+      <p>This is the about section.</p>
+    </AboutContainer>
+  );
+};
+
+const AboutContainer = styled.div\`
+  padding: 20px;
+\`;
+
+export default About;
+"""
+                },
+                'styles': {
+                    'GlobalStyle.js': """import { createGlobalStyle } from 'styled-components';
+
+const GlobalStyle = createGlobalStyle\`
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Arial', sans-serif;
+    background-color: ${({ theme }) => theme.colors.background};
+    color: ${({ theme }) => theme.colors.text};
+  }
+\`;
+
+export default GlobalStyle;
+""",
+                    'theme.js': """const theme = {
+  colors: {
+    background: '#f5f5f5',
+    text: '#333',
+    primary: '#6200ea',
+    secondary: '#03dac5'
+  }
+};
+
+export default theme;
+"""
+                },
+                'App.js': """import React, { useState, useEffect } from 'react';
+import { ThemeProvider } from 'styled-components';
+import GlobalStyle from './styles/GlobalStyle';
+import theme from './styles/theme';
+import Header from './components/Header';
+import Footer from './components/Footer';
+import Home from './components/Home';
+import axios from 'axios';
+
+const App = () => {
+  const [projects, setProjects] = useState([]);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      const res = await axios.get('http://localhost:5000/api/projects');
+      setProjects(res.data);
+    };
+    fetchProjects();
+  }, []);
+
+  return (
+    <ThemeProvider theme={theme}>
+      <GlobalStyle />
+      <Header />
+      <Home projects={projects} />
+      <Footer />
+    </ThemeProvider>
+  );
+};
+
+export default App;
+""",
+                'index.js': """import React from 'react';
+import ReactDOM from 'react-dom';
+import App from './App';
+
+ReactDOM.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+  document.getElementById('root')
+);
+""",
+                'package.json': """{
+  "name": "frontend",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "axios": "^0.21.1",
+    "framer-motion": "^4.1.17",
+    "react": "^17.0.1",
+    "react-dom": "^17.0.1",
+    "react-scripts": "4.0.3",
+    "styled-components": "^5.2.3"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
+"""
+            }
+        }
+-
